@@ -1,3 +1,19 @@
+"""
+OpenHands 异步 LLM 模块
+
+本模块实现了异步的大型语言模型交互功能，包括：
+- 异步 LLM API 调用，提高并发性能
+- 异步重试机制和错误处理
+- 用户取消操作支持
+- 异步成本跟踪和指标收集
+- 并发请求管理
+
+技术栈:
+- Asyncio: 异步编程框架
+- LiteLLM: 异步 LLM API 调用
+- Functools: 偏函数和装饰器
+"""
+
 import asyncio
 from functools import partial
 from typing import Any, Callable
@@ -15,7 +31,17 @@ from openhands.utils.shutdown_listener import should_continue
 
 
 class AsyncLLM(LLM):
-    """Asynchronous LLM class."""
+    """
+    异步 LLM 类。
+
+    该类继承自基础 LLM 类，提供异步接口与语言模型交互。它支持异步调用 LLM API，
+    处理异步上下文中的取消操作，并维护与基础 LLM 类相同的功能集。
+
+    技术栈:
+    - Python 3.12+
+    - Asyncio 用于异步操作
+    - LiteLLM 的异步接口
+    """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

@@ -1,3 +1,21 @@
+"""
+OpenHands LLM 重试混入模块
+
+本模块提供了可配置的重试功能，用于处理 LLM API 调用中的临时错误。
+包括指数退避策略、异常过滤、重试监听器等功能。
+
+主要功能：
+- 指数退避重试策略
+- 可配置的重试参数（次数、等待时间、倍数）
+- 异常类型过滤，只对特定异常进行重试
+- 重试监听器和回调支持
+- 动态参数调整（如温度参数）
+
+技术栈:
+- Tenacity: 重试机制库
+- Python 标准库: 类型注解和回调
+"""
+
 from typing import Any, Callable
 
 from tenacity import (
@@ -13,7 +31,17 @@ from openhands.utils.tenacity_stop import stop_if_should_exit
 
 
 class RetryMixin:
-    """Mixin class for retry logic."""
+    """
+    重试逻辑混入类。
+
+    该类提供了重试逻辑，用于处理 LLM API 调用中的临时错误。它使用指数退避策略进行重试，
+    支持自定义重试参数，并记录重试尝试和错误信息。
+
+    技术栈:
+    - Python 3.12+
+    - Tenacity 用于实现重试逻辑
+    - 装饰器模式用于增强函数功能
+    """
 
     def retry_decorator(self, **kwargs: Any) -> Callable:
         """

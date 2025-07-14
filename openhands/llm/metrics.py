@@ -1,3 +1,18 @@
+"""
+OpenHands LLM 指标收集模块
+
+本模块负责收集和管理与 LLM 使用相关的各种指标，包括：
+- API 调用成本跟踪
+- 令牌使用统计（输入、输出、缓存等）
+- 响应延迟监控
+- 上下文窗口使用情况
+- 指标聚合和分析
+
+技术栈:
+- Pydantic: 数据建模和验证
+- Python 标准库: 时间处理和数据操作
+"""
+
 import copy
 import time
 
@@ -5,33 +20,48 @@ from pydantic import BaseModel, Field
 
 
 class Cost(BaseModel):
-    model: str
-    cost: float
-    timestamp: float = Field(default_factory=time.time)
+    """
+    成本指标模型
+    
+    记录单次 API 调用的成本信息，包括模型名称、成本金额和时间戳。
+    """
+    model: str  # 使用的模型名称
+    cost: float  # API 调用成本（美元）
+    timestamp: float = Field(default_factory=time.time)  # 调用时间戳
 
 
 class ResponseLatency(BaseModel):
-    """Metric tracking the round-trip time per completion call."""
-
-    model: str
-    latency: float
-    response_id: str
+    """
+    响应延迟指标模型
+    
+    跟踪每次完成调用的往返时间，用于性能监控和优化。
+    """
+    model: str  # 使用的模型名称
+    latency: float  # 响应延迟时间（秒）
+    response_id: str  # 响应的唯一标识符
 
 
 class TokenUsage(BaseModel):
-    """Metric tracking detailed token usage per completion call."""
-
-    model: str = Field(default='')
-    prompt_tokens: int = Field(default=0)
-    completion_tokens: int = Field(default=0)
-    cache_read_tokens: int = Field(default=0)
-    cache_write_tokens: int = Field(default=0)
-    context_window: int = Field(default=0)
-    per_turn_token: int = Field(default=0)
-    response_id: str = Field(default='')
+    """
+    令牌使用指标模型
+    
+    跟踪每次完成调用的详细令牌使用情况，包括输入、输出、缓存等各种类型的令牌。
+    """
+    model: str = Field(default='')  # 使用的模型名称
+    prompt_tokens: int = Field(default=0)  # 输入提示令牌数
+    completion_tokens: int = Field(default=0)  # 输出完成令牌数
+    cache_read_tokens: int = Field(default=0)  # 缓存读取令牌数
+    cache_write_tokens: int = Field(default=0)  # 缓存写入令牌数
+    context_window: int = Field(default=0)  # 上下文窗口大小
+    per_turn_token: int = Field(default=0)  # 每轮对话令牌数
+    response_id: str = Field(default='')  # 响应的唯一标识符
 
     def __add__(self, other: 'TokenUsage') -> 'TokenUsage':
-        """Add two TokenUsage instances together."""
+        """
+        将两个 TokenUsage 实例相加。
+        
+        用于聚合多次调用的令牌使用情况。
+        """
         return TokenUsage(
             model=self.model,
             prompt_tokens=self.prompt_tokens + other.prompt_tokens,
@@ -45,12 +75,22 @@ class TokenUsage(BaseModel):
 
 
 class Metrics:
-    """Metrics class can record various metrics during running and evaluation.
-    We track:
-      - accumulated_cost and costs
-      - max_budget_per_task (budget limit)
-      - A list of ResponseLatency
-      - A list of TokenUsage (one per call).
+    """
+    指标收集类，用于记录运行和评估过程中的各种指标。
+
+    该类负责收集和管理与 LLM 使用相关的各种指标。它跟踪 API 调用成本、
+    记录响应延迟、统计令牌使用情况，并支持指标合并和差异计算。
+
+    技术栈:
+    - Python 3.12+
+    - Pydantic 用于数据模型定义
+    - 属性装饰器用于访问控制
+
+    我们跟踪:
+      - accumulated_cost 和 costs（累计成本和成本列表）
+      - max_budget_per_task（任务预算限制）
+      - ResponseLatency 列表（响应延迟）
+      - TokenUsage 列表（每次调用的令牌使用情况）
     """
 
     def __init__(self, model_name: str = 'default') -> None:

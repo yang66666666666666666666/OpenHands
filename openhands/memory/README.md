@@ -1,18 +1,78 @@
-# Memory Component
+# OpenHands 记忆模块
 
-- Short Term History
-- Memory Condenser
+OpenHands 中的记忆模块负责在对话过程中管理代理的记忆和上下文。它由两个主要组件组成：
 
-## Short Term History
-- Short term history filters the event stream and computes the messages that are injected into the context
-- It filters out certain events of no interest for the Agent, such as AgentChangeStateObservation or NullAction/NullObservation
-- When the context window or the token limit set by the user is exceeded, history starts condensing: chunks of messages into summaries.
-- Each summary is then injected into the context, in the place of the respective chunk it summarizes
+1. **记忆组件**：处理知识检索和上下文管理
+2. **压缩组件**：通过压缩事件来管理对话历史大小
 
-## Memory Condenser
-- Memory condenser is responsible for summarizing the chunks of events
-- It summarizes the earlier events first
-- It starts with the earliest agent actions and observations between two user messages
-- Then it does the same for later chunks of events between user messages
-- If there are no more agent events, it summarizes the user messages, this time one by one, if they're large enough and not immediately after an AgentFinishAction event (we assume those are tasks, potentially important)
-- Summaries are retrieved from the LLM as AgentSummarizeAction, and are saved in State.
+## 技术栈
+
+- **Python 3.12+**：核心编程语言
+- **Pydantic**：用于数据建模和验证
+- **Asyncio**：用于异步操作
+- **事件驱动架构**：使用 EventStream 进行通信
+- **工厂模式**：用于创建压缩器实例
+- **策略模式**：用于实现不同的压缩策略
+
+## 记忆组件
+
+记忆组件作为代理的知识检索系统，提供：
+
+- **仓库信息**：关于当前仓库的详细信息
+- **运行时信息**：关于运行时环境的信息
+- **微代理知识**：来自微代理的领域特定知识
+- **对话指令**：当前对话的特定指令
+
+### 微代理类型
+
+- **仓库微代理（RepoMicroagents）**：始终激活，提供仓库特定上下文
+- **知识微代理（KnowledgeMicroagents）**：由特定关键词触发，提供领域特定知识
+
+### 微代理来源
+
+- **全局微代理**：随 OpenHands 安装，所有用户可用
+- **用户微代理**：存储在 ~/.openhands/microagents/，特定于用户
+- **工作区微代理**：在用户克隆的仓库中找到（.openhands/microagents/）
+
+## 压缩组件
+
+压缩组件负责在必要时通过压缩事件来管理对话历史大小：
+
+- 减少包含在 LLM 上下文中的事件数量
+- 总结或过滤事件以保持在令牌限制内
+- 在移除不太相关的信息的同时保持重要上下文
+
+### 压缩过程
+
+1. 当超出上下文窗口或令牌限制时，压缩器开始将事件块压缩为摘要
+2. 它首先总结较早的事件，从两个用户消息之间最早的代理动作和观察开始
+3. 然后处理用户消息之间的后续事件块
+4. 如果没有更多的代理事件，它会单独总结用户消息，前提是它们足够大且不是紧跟在 AgentFinishAction 事件之后（我们假设这些是任务，可能很重要）
+5. 摘要由 LLM 生成并保存在 State 中
+6. 每个摘要都会替代它所总结的事件插入到上下文中
+
+### 压缩策略
+
+该模块实现了几种压缩策略：
+
+- **LLM 总结压缩器**：使用 LLM 生成被遗忘事件的摘要
+- **分摊遗忘压缩器**：逐渐遗忘较旧的事件
+- **对话窗口压缩器**：保持最近事件的固定窗口
+- **浏览器输出压缩器**：专门用于压缩浏览器输出
+- **观察掩蔽压缩器**：掩蔽观察的某些部分
+- **无操作压缩器**：不进行压缩，直接传递事件
+- **最近事件压缩器**：只保留最近的事件
+- **结构化摘要压缩器**：创建事件的结构化摘要
+
+## 视图组件
+
+视图组件表示事件历史的经过过滤和处理的子集：
+
+- 提供类似列表的访问过滤后的事件
+- 处理压缩事件的语义
+- 确保被遗忘的事件被正确排除
+- 在适当的位置插入摘要
+
+## 更多信息
+
+查看 [ARCHITECTURE.md](./ARCHITECTURE.md) 文件，了解记忆模块架构的详细描述，包括组件交互、数据流和扩展点。

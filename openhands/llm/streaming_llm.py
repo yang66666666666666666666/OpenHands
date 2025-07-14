@@ -1,3 +1,19 @@
+"""
+OpenHands 流式 LLM 模块
+
+本模块实现了流式大型语言模型交互功能，包括：
+- 流式 LLM API 调用，实时返回生成内容
+- 流式重试机制和错误处理
+- 用户取消操作支持
+- 流式指标收集和成本跟踪
+- 增量响应处理，优化用户体验
+
+技术栈:
+- Asyncio: 异步编程和流式处理
+- LiteLLM: 流式 LLM API 调用
+- Functools: 偏函数和装饰器
+"""
+
 import asyncio
 from functools import partial
 from typing import Any, Callable
@@ -9,7 +25,19 @@ from openhands.llm.llm import REASONING_EFFORT_SUPPORTED_MODELS
 
 
 class StreamingLLM(AsyncLLM):
-    """Streaming LLM class."""
+    """
+    流式 LLM 类。
+
+    该类继承自 AsyncLLM 类，专门用于处理流式响应。它支持流式输出，
+    逐步返回 LLM 生成的内容，在流式传输过程中处理取消操作，
+    并为每个流式块收集指标。
+
+    技术栈:
+    - Python 3.12+
+    - Asyncio 用于异步操作
+    - 异步生成器用于流式传输
+    - LiteLLM 的流式接口
+    """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

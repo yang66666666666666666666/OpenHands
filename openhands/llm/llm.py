@@ -1,3 +1,21 @@
+"""
+OpenHands LLM 基础模块
+
+本模块实现了与大型语言模型交互的核心功能，包括：
+- 统一的 LLM 接口，支持多种模型提供商
+- 函数调用和工具使用支持
+- 成本跟踪和指标收集
+- 重试机制和错误处理
+- 多模态内容处理（文本和图像）
+- 缓存和性能优化
+
+技术栈:
+- LiteLLM: 统一 LLM API 接口
+- Pydantic: 数据验证和建模
+- HTTPx: HTTP 客户端
+- Tenacity: 重试机制
+"""
+
 import copy
 import os
 import time
@@ -38,17 +56,17 @@ from openhands.llm.retry_mixin import RetryMixin
 
 __all__ = ['LLM']
 
-# tuple of exceptions to retry on
+# 需要重试的异常类型元组
 LLM_RETRY_EXCEPTIONS: tuple[type[Exception], ...] = (
-    RateLimitError,
-    ServiceUnavailableError,
-    litellm.Timeout,
-    litellm.InternalServerError,
-    LLMNoResponseError,
+    RateLimitError,           # 速率限制错误
+    ServiceUnavailableError,  # 服务不可用错误
+    litellm.Timeout,          # 超时错误
+    litellm.InternalServerError,  # 内部服务器错误
+    LLMNoResponseError,       # LLM 无响应错误
 )
 
-# cache prompt supporting models
-# remove this when we gemini and deepseek are supported
+# 支持缓存提示的模型列表
+# 当 Gemini 和 DeepSeek 支持时移除此限制
 CACHE_PROMPT_SUPPORTED_MODELS = [
     'claude-3-7-sonnet-20250219',
     'claude-sonnet-3-7-latest',
@@ -62,7 +80,7 @@ CACHE_PROMPT_SUPPORTED_MODELS = [
     'claude-opus-4-20250514',
 ]
 
-# function calling supporting models
+# 支持函数调用的模型列表
 FUNCTION_CALLING_SUPPORTED_MODELS = [
     'claude-3-7-sonnet-20250219',
     'claude-sonnet-3-7-latest',
@@ -86,6 +104,7 @@ FUNCTION_CALLING_SUPPORTED_MODELS = [
     'gpt-4.1',
 ]
 
+# 支持推理努力参数的模型列表
 REASONING_EFFORT_SUPPORTED_MODELS = [
     'o1-2024-12-17',
     'o1',
@@ -99,6 +118,7 @@ REASONING_EFFORT_SUPPORTED_MODELS = [
     'gemini-2.5-pro',
 ]
 
+# 不支持停止词的模型列表
 MODELS_WITHOUT_STOP_WORDS = [
     'o1-mini',
     'o1-preview',
@@ -109,10 +129,20 @@ MODELS_WITHOUT_STOP_WORDS = [
 
 
 class LLM(RetryMixin, DebugMixin):
-    """The LLM class represents a Language Model instance.
+    """
+    LLM 类代表一个语言模型实例。
 
-    Attributes:
-        config: an LLMConfig object specifying the configuration of the LLM.
+    该类是 OpenHands 与各种大型语言模型交互的核心接口。它处理模型配置、
+    API 调用、函数调用转换、指标收集和错误重试等功能。
+
+    技术栈:
+    - Python 3.12+
+    - LiteLLM 用于统一不同 LLM 提供商的接口
+    - Pydantic 用于数据验证
+    - Tenacity 用于重试逻辑
+
+    属性:
+        config: 一个 LLMConfig 对象，指定 LLM 的配置。
     """
 
     def __init__(
@@ -121,13 +151,16 @@ class LLM(RetryMixin, DebugMixin):
         metrics: Metrics | None = None,
         retry_listener: Callable[[int, int], None] | None = None,
     ) -> None:
-        """Initializes the LLM. If LLMConfig is passed, its values will be the fallback.
-
-        Passing simple parameters always overrides config.
-
-        Args:
-            config: The LLM configuration.
-            metrics: The metrics to use.
+        """
+        初始化 LLM 实例。
+        
+        如果传递了 LLMConfig，其值将作为后备配置。
+        传递的简单参数总是会覆盖配置中的值。
+        
+        参数:
+            config: LLM 配置对象，包含模型参数和 API 设置
+            metrics: 用于收集指标的 Metrics 对象，如果为 None 则创建新实例
+            retry_listener: 重试监听器回调函数，用于监听重试事件
         """
         self._tried_model_info = False
         self.metrics: Metrics = (

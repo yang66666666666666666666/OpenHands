@@ -1,3 +1,16 @@
+"""
+OpenHands LLM 工具类模块
+
+本模块提供了 LLM 相关的工具函数和辅助功能，包括：
+- 工具兼容性检查和修改
+- 模型特定的工具处理逻辑
+- 工具参数格式化和验证
+
+技术栈:
+- Python 标准库: 类型检查和数据处理
+- LiteLLM: 工具参数类型定义
+"""
+
 import copy
 from typing import TYPE_CHECKING
 
@@ -11,7 +24,19 @@ if TYPE_CHECKING:
 def check_tools(
     tools: list['ChatCompletionToolParam'], llm_config: LLMConfig
 ) -> list['ChatCompletionToolParam']:
-    """Checks and modifies tools for compatibility with the current LLM."""
+    """
+    检查并修改工具以确保与当前 LLM 的兼容性。
+    
+    不同的 LLM 模型对工具参数格式有不同的支持程度，
+    此函数根据模型类型调整工具定义以确保兼容性。
+    
+    参数:
+        tools: 工具参数列表
+        llm_config: LLM 配置对象
+        
+    返回:
+        修改后的工具参数列表
+    """
     # Special handling for Gemini models which don't support default fields and have limited format support
     if 'gemini' in llm_config.model.lower():
         logger.info(
