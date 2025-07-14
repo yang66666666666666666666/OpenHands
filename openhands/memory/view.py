@@ -1,15 +1,13 @@
 """
-Memory View Module for OpenHands
+OpenHands 记忆视图模块
 
-This module provides the View class, which represents a filtered and processed
-view of the event history that can be sent to the LLM. Views handle the semantics
-of condensation events, ensuring that forgotten events are properly excluded and
-summaries are inserted at the appropriate positions.
+本模块提供了 View 类，它表示可以发送给 LLM 的经过过滤和处理的事件历史视图。
+视图处理压缩事件的语义，确保被遗忘的事件被正确排除，并在适当的位置插入摘要。
 
-Technical Stack:
+技术栈:
 - Python 3.12+
-- Pydantic for data modeling
-- Type hints with overloaded methods for better IDE support
+- Pydantic 用于数据建模
+- 带有重载方法的类型提示，以获得更好的 IDE 支持
 """
 
 from __future__ import annotations

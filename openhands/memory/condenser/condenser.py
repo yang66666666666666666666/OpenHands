@@ -1,16 +1,14 @@
 """
-Memory Condenser Module for OpenHands
+OpenHands 记忆压缩模块
 
-This module provides the core functionality for condensing conversation history
-to manage token limits and maintain context in LLM interactions. Condensers are
-responsible for summarizing or filtering events to reduce token usage while
-preserving important context.
+本模块提供了压缩对话历史的核心功能，用于管理令牌限制并在 LLM 交互中维持上下文。
+压缩器负责总结或过滤事件，以减少令牌使用量，同时保留重要的上下文信息。
 
-Technical Stack:
+技术栈:
 - Python 3.12+
-- Pydantic for data modeling
-- Abstract base classes for extensible condenser implementations
-- Factory pattern for condenser creation
+- Pydantic 用于数据建模
+- 用于可扩展压缩器实现的抽象基类
+- 用于压缩器创建的工厂模式
 """
 
 from __future__ import annotations

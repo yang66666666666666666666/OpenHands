@@ -1,15 +1,14 @@
 """
-Memory Module for OpenHands
+OpenHands 记忆模块
 
-This module provides the core memory functionality for the OpenHands agent system.
-It handles information retrieval, microagent knowledge management, and context management
-for agent conversations.
+本模块提供 OpenHands 代理系统的核心记忆功能。
+它处理信息检索、微代理知识管理以及代理对话的上下文管理。
 
-Technical Stack:
+技术栈:
 - Python 3.12+
-- Pydantic for data modeling
-- Asyncio for asynchronous operations
-- Event-driven architecture using EventStream
+- Pydantic 用于数据建模
+- Asyncio 用于异步操作
+- 基于 EventStream 的事件驱动架构
 """
 
 import asyncio
@@ -54,30 +53,29 @@ USER_MICROAGENTS_DIR = Path.home() / '.openhands' / 'microagents'
 
 class Memory:
     """
-    Memory is a component that listens to the EventStream for information retrieval actions
-    (a RecallAction) and publishes observations with the content (such as RecallObservation).
+    Memory 是一个监听 EventStream 中信息检索动作（RecallAction）并发布包含内容的观察结果
+    （如 RecallObservation）的组件。
 
-    The Memory component serves as a knowledge retrieval system for the agent, providing:
-    1. Access to repository-specific information through RepoMicroagents
-    2. Domain-specific knowledge through KnowledgeMicroagents
-    3. Contextual information about the runtime environment
-    4. Conversation-specific instructions
+    Memory 组件作为代理的知识检索系统，提供：
+    1. 通过 RepoMicroagents 访问仓库特定信息
+    2. 通过 KnowledgeMicroagents 提供领域特定知识
+    3. 关于运行时环境的上下文信息
+    4. 对话特定指令
 
-    It operates on an event-driven model, responding to RecallAction events by publishing
-    appropriate RecallObservation events with the requested information.
+    它基于事件驱动模型运行，通过发布包含请求信息的 RecallObservation 事件来响应 RecallAction 事件。
     """
 
-    # Unique session identifier
+    # 唯一会话标识符
     sid: str
-    # Event stream for communication with other components
+    # 用于与其他组件通信的事件流
     event_stream: EventStream
-    # Callback for reporting status updates
+    # 用于报告状态更新的回调函数
     status_callback: Callable | None
-    # Asyncio event loop for handling asynchronous operations
+    # 用于处理异步操作的 Asyncio 事件循环
     loop: asyncio.AbstractEventLoop | None
-    # Repository-specific microagents (always active)
+    # 仓库特定微代理（始终激活）
     repo_microagents: dict[str, RepoMicroagent]
-    # Knowledge microagents (triggered by specific keywords)
+    # 知识微代理（由特定关键词触发）
     knowledge_microagents: dict[str, KnowledgeMicroagent]
 
     def __init__(
@@ -87,51 +85,51 @@ class Memory:
         status_callback: Callable | None = None,
     ):
         """
-        Initialize the Memory component.
+        初始化 Memory 组件。
 
-        Args:
-            event_stream: The event stream to subscribe to for receiving and publishing events
-            sid: Session identifier for this memory instance
-            status_callback: Optional callback for reporting status updates
+        参数:
+            event_stream: 用于接收和发布事件的事件流
+            sid: 此记忆实例的会话标识符
+            status_callback: 用于报告状态更新的可选回调函数
         """
-        # Initialize core attributes
+        # 初始化核心属性
         self.event_stream = event_stream
         self.sid = sid if sid else str(uuid.uuid4())
         self.status_callback = status_callback
         self.loop = None
 
-        # Subscribe to the event stream to receive events
+        # 订阅事件流以接收事件
         self.event_stream.subscribe(
             EventStreamSubscriber.MEMORY,
             self.on_event,
             self.sid,
         )
 
-        # Initialize dictionaries to store microagents
+        # 初始化存储微代理的字典
         self.repo_microagents = {}
         self.knowledge_microagents = {}
 
-        # Initialize contextual information containers
+        # 初始化上下文信息容器
         self.repository_info: RepositoryInfo | None = None
         self.runtime_info: RuntimeInfo | None = None
         self.conversation_instructions: ConversationInstructions | None = None
 
-        # Load global microagents from the OpenHands installation directory
-        # These are the PUBLIC microagents available to all users
+        # 从 OpenHands 安装目录加载全局微代理
+        # 这些是所有用户都可用的公共微代理
         self._load_global_microagents()
 
-        # Load user-specific microagents from the user's home directory
-        # These are custom microagents created by the user
+        # 从用户的主目录加载用户特定的微代理
+        # 这些是用户创建的自定义微代理
         self._load_user_microagents()
 
     def on_event(self, event: Event):
         """
-        Handle an event from the event stream.
+        处理来自事件流的事件。
 
-        This is the synchronous entry point that delegates to the asynchronous handler.
+        这是委托给异步处理程序的同步入口点。
 
-        Args:
-            event: The event to handle
+        参数:
+            event: 要处理的事件
         """
         asyncio.get_event_loop().run_until_complete(self._on_event(event))
 
