@@ -1,9 +1,16 @@
-"""Convert function calling messages to non-function calling messages and vice versa.
+"""
+函数调用消息转换模块。
 
-This will inject prompts so that models that doesn't support function calling
-can still be used with function calling agents.
+该模块负责在支持和不支持函数调用的模型之间进行转换。它将函数调用消息转换为普通文本提示，
+并将普通文本响应解析回函数调用格式，使得不支持函数调用的模型也能与函数调用代理一起使用。
 
-We follow format from: https://docs.litellm.ai/docs/completion/function_call
+技术栈:
+- Python 3.12+
+- 正则表达式用于文本解析
+- JSON 用于参数处理
+- 模板系统用于提示生成
+
+我们遵循以下格式: https://docs.litellm.ai/docs/completion/function_call
 """
 
 import copy

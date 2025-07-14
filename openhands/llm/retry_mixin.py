@@ -13,7 +13,17 @@ from openhands.utils.tenacity_stop import stop_if_should_exit
 
 
 class RetryMixin:
-    """Mixin class for retry logic."""
+    """
+    重试逻辑混入类。
+
+    该类提供了重试逻辑，用于处理 LLM API 调用中的临时错误。它使用指数退避策略进行重试，
+    支持自定义重试参数，并记录重试尝试和错误信息。
+
+    技术栈:
+    - Python 3.12+
+    - Tenacity 用于实现重试逻辑
+    - 装饰器模式用于增强函数功能
+    """
 
     def retry_decorator(self, **kwargs: Any) -> Callable:
         """

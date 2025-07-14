@@ -9,7 +9,19 @@ from openhands.llm.llm import REASONING_EFFORT_SUPPORTED_MODELS
 
 
 class StreamingLLM(AsyncLLM):
-    """Streaming LLM class."""
+    """
+    流式 LLM 类。
+
+    该类继承自 AsyncLLM 类，专门用于处理流式响应。它支持流式输出，
+    逐步返回 LLM 生成的内容，在流式传输过程中处理取消操作，
+    并为每个流式块收集指标。
+
+    技术栈:
+    - Python 3.12+
+    - Asyncio 用于异步操作
+    - 异步生成器用于流式传输
+    - LiteLLM 的流式接口
+    """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

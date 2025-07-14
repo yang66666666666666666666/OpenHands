@@ -45,12 +45,22 @@ class TokenUsage(BaseModel):
 
 
 class Metrics:
-    """Metrics class can record various metrics during running and evaluation.
-    We track:
-      - accumulated_cost and costs
-      - max_budget_per_task (budget limit)
-      - A list of ResponseLatency
-      - A list of TokenUsage (one per call).
+    """
+    指标收集类，用于记录运行和评估过程中的各种指标。
+
+    该类负责收集和管理与 LLM 使用相关的各种指标。它跟踪 API 调用成本、
+    记录响应延迟、统计令牌使用情况，并支持指标合并和差异计算。
+
+    技术栈:
+    - Python 3.12+
+    - Pydantic 用于数据模型定义
+    - 属性装饰器用于访问控制
+
+    我们跟踪:
+      - accumulated_cost 和 costs（累计成本和成本列表）
+      - max_budget_per_task（任务预算限制）
+      - ResponseLatency 列表（响应延迟）
+      - TokenUsage 列表（每次调用的令牌使用情况）
     """
 
     def __init__(self, model_name: str = 'default') -> None:

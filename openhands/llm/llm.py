@@ -109,10 +109,20 @@ MODELS_WITHOUT_STOP_WORDS = [
 
 
 class LLM(RetryMixin, DebugMixin):
-    """The LLM class represents a Language Model instance.
+    """
+    LLM 类代表一个语言模型实例。
 
-    Attributes:
-        config: an LLMConfig object specifying the configuration of the LLM.
+    该类是 OpenHands 与各种大型语言模型交互的核心接口。它处理模型配置、
+    API 调用、函数调用转换、指标收集和错误重试等功能。
+
+    技术栈:
+    - Python 3.12+
+    - LiteLLM 用于统一不同 LLM 提供商的接口
+    - Pydantic 用于数据验证
+    - Tenacity 用于重试逻辑
+
+    属性:
+        config: 一个 LLMConfig 对象，指定 LLM 的配置。
     """
 
     def __init__(

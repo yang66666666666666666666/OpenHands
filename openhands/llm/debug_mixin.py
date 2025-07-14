@@ -7,6 +7,18 @@ MESSAGE_SEPARATOR = '\n\n----------\n\n'
 
 
 class DebugMixin:
+    """
+    调试功能混入类。
+
+    该类提供了调试功能，用于记录 LLM 交互。它记录发送到 LLM 的提示和从 LLM 接收的响应，
+    并格式化多模态内容以便于调试。
+
+    技术栈:
+    - Python 3.12+
+    - 日志系统用于记录交互
+    - 混入模式用于代码复用
+    """
+
     def log_prompt(self, messages: list[dict[str, Any]] | dict[str, Any]) -> None:
         if not messages:
             logger.debug('No completion messages!')

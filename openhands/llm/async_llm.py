@@ -15,7 +15,17 @@ from openhands.utils.shutdown_listener import should_continue
 
 
 class AsyncLLM(LLM):
-    """Asynchronous LLM class."""
+    """
+    异步 LLM 类。
+
+    该类继承自基础 LLM 类，提供异步接口与语言模型交互。它支持异步调用 LLM API，
+    处理异步上下文中的取消操作，并维护与基础 LLM 类相同的功能集。
+
+    技术栈:
+    - Python 3.12+
+    - Asyncio 用于异步操作
+    - LiteLLM 的异步接口
+    """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
