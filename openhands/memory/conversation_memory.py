@@ -1,3 +1,18 @@
+"""
+OpenHands 对话记忆模块
+
+本模块负责将事件历史记录转换为结构化的对话格式，以便发送给大型语言模型（LLM）。
+它处理各种事件类型，包括用户消息、代理动作和系统观察，并将它们转换为适合 LLM 处理的格式。
+
+技术栈:
+- Python 3.12+
+- Pydantic 用于数据验证
+- LiteLLM 用于模型响应处理
+- 事件驱动架构
+- 消息转换管道
+- 多模态内容处理（文本和图像）
+"""
+
 from typing import Generator
 
 from litellm import ModelResponse
@@ -51,21 +66,41 @@ from openhands.utils.prompt import (
 
 
 class ConversationMemory:
-    """Processes event history into a coherent conversation for the agent."""
+    """
+    处理事件历史记录，将其转换为代理的连贯对话。
+
+    对话记忆负责将各种事件（如用户消息、代理动作和观察结果）转换为结构化的消息列表，
+    这些消息可以发送给 LLM 以生成响应。它支持多模态内容处理，包括文本和图像。
+
+    主要功能:
+    - 事件到消息的转换
+    - 系统消息和用户消息的管理
+    - 工具调用和响应的处理
+    - 图像内容的处理
+    - 消息内容的截断和格式化
+    """
 
     def __init__(self, config: AgentConfig, prompt_manager: PromptManager):
+        """
+        初始化对话记忆组件。
+
+        参数:
+            config: 代理配置，包含功能标志和行为设置
+            prompt_manager: 提示管理器，用于访问系统提示和其他提示模板
+        """
         self.agent_config = config
         self.prompt_manager = prompt_manager
 
     @staticmethod
     def _is_valid_image_url(url: str | None) -> bool:
-        """Check if an image URL is valid and non-empty.
+        """
+        检查图像 URL 是否有效且非空。
 
-        Args:
-            url: The image URL to validate
+        参数:
+            url: 要验证的图像 URL
 
-        Returns:
-            True if the URL is valid, False otherwise
+        返回:
+            如果 URL 有效则为 True，否则为 False
         """
         return bool(url and url.strip())
 
@@ -76,36 +111,42 @@ class ConversationMemory:
         max_message_chars: int | None = None,
         vision_is_active: bool = False,
     ) -> list[Message]:
-        """Process state history into a list of messages for the LLM.
+        """
+        将状态历史处理为 LLM 的消息列表。
 
-        Ensures that tool call actions are processed correctly in function calling mode.
+        确保在函数调用模式下正确处理工具调用动作。
 
-        Args:
-            condensed_history: The condensed history of events to convert
-            max_message_chars: The maximum number of characters in the content of an event included
-                in the prompt to the LLM. Larger observations are truncated.
-            vision_is_active: Whether vision is active in the LLM. If True, image URLs will be included.
-            initial_user_action: The initial user message action, if available. Used to ensure the conversation starts correctly.
+        参数:
+            condensed_history: 要转换的压缩事件历史
+            initial_user_action: 初始用户消息动作（如果可用）。用于确保对话正确开始。
+            max_message_chars: 包含在发送给 LLM 的提示中的事件内容的最大字符数。
+                              较大的观察结果会被截断。
+            vision_is_active: LLM 中是否激活了视觉功能。如果为 True，将包含图像 URL。
+
+        返回:
+            格式化的消息列表，可以直接发送给 LLM
         """
 
         events = condensed_history
 
-        # Ensure the event list starts with SystemMessageAction, then MessageAction(source='user')
+        # 确保事件列表以 SystemMessageAction 开始，然后是 MessageAction(source='user')
         self._ensure_system_message(events)
         self._ensure_initial_user_message(events, initial_user_action)
 
-        # log visual browsing status
-        logger.debug(f'Visual browsing: {self.agent_config.enable_som_visual_browsing}')
+        # 记录视觉浏览状态
+        logger.debug(f'视觉浏览: {self.agent_config.enable_som_visual_browsing}')
 
-        # Initialize empty messages list
+        # 初始化空消息列表
         messages = []
 
-        # Process regular events
+        # 处理常规事件
+        # 存储待处理的工具调用动作消息
         pending_tool_call_action_messages: dict[str, Message] = {}
+        # 工具调用 ID 到消息的映射
         tool_call_id_to_message: dict[str, Message] = {}
 
         for i, event in enumerate(events):
-            # create a regular message from an event
+            # 从事件创建常规消息
             if isinstance(event, Action):
                 messages_to_add = self._process_action(
                     action=event,
@@ -123,60 +164,68 @@ class ConversationMemory:
                     events=events,
                 )
             else:
-                raise ValueError(f'Unknown event type: {type(event)}')
+                raise ValueError(f'未知的事件类型: {type(event)}')
 
-            # Check pending tool call action messages and see if they are complete
+            # 检查待处理的工具调用动作消息，查看它们是否已完成
             _response_ids_to_remove = []
             for (
                 response_id,
                 pending_message,
             ) in pending_tool_call_action_messages.items():
                 assert pending_message.tool_calls is not None, (
-                    'Tool calls should NOT be None when function calling is enabled & the message is considered pending tool call. '
-                    f'Pending message: {pending_message}'
+                    '当启用函数调用且消息被视为待处理工具调用时，工具调用不应为 None。'
+                    f'待处理消息: {pending_message}'
                 )
                 if all(
                     tool_call.id in tool_call_id_to_message
                     for tool_call in pending_message.tool_calls
                 ):
-                    # If complete:
-                    # -- 1. Add the message that **initiated** the tool calls
+                    # 如果完成:
+                    # -- 1. 添加**发起**工具调用的消息
                     messages_to_add.append(pending_message)
-                    # -- 2. Add the tool calls **results***
+                    # -- 2. 添加工具调用的**结果**
                     for tool_call in pending_message.tool_calls:
                         messages_to_add.append(tool_call_id_to_message[tool_call.id])
                         tool_call_id_to_message.pop(tool_call.id)
                     _response_ids_to_remove.append(response_id)
-            # Cleanup the processed pending tool messages
+            # 清理已处理的待处理工具消息
             for response_id in _response_ids_to_remove:
                 pending_tool_call_action_messages.pop(response_id)
 
             messages += messages_to_add
 
-        # Apply final filtering so that the messages in context don't have unmatched tool calls
-        # and tool responses, for example
+        # 应用最终过滤，以确保上下文中的消息没有不匹配的工具调用
+        # 和工具响应，例如
         messages = list(ConversationMemory._filter_unmatched_tool_calls(messages))
 
-        # Apply final formatting
+        # 应用最终格式化
         messages = self._apply_user_message_formatting(messages)
 
         return messages
 
     def _apply_user_message_formatting(self, messages: list[Message]) -> list[Message]:
-        """Applies formatting rules, such as adding newlines between consecutive user messages."""
+        """
+        应用格式化规则，例如在连续的用户消息之间添加换行符。
+
+        参数:
+            messages: 要格式化的消息列表
+
+        返回:
+            格式化后的消息列表
+        """
         formatted_messages = []
         prev_role = None
         for msg in messages:
-            # Add double newline between consecutive user messages
+            # 在连续的用户消息之间添加双换行符
             if msg.role == 'user' and prev_role == 'user' and len(msg.content) > 0:
-                # Find the first TextContent in the message to add newlines
+                # 查找消息中的第一个 TextContent 以添加换行符
                 for content_item in msg.content:
                     if isinstance(content_item, TextContent):
-                        # Prepend two newlines to ensure visual separation
+                        # 在前面添加两个换行符以确保视觉分隔
                         content_item.text = '\n\n' + content_item.text
                         break
             formatted_messages.append(msg)
-            prev_role = msg.role  # Update prev_role after processing each message
+            prev_role = msg.role  # 处理每条消息后更新 prev_role
         return formatted_messages
 
     def _process_action(
@@ -185,56 +234,68 @@ class ConversationMemory:
         pending_tool_call_action_messages: dict[str, Message],
         vision_is_active: bool = False,
     ) -> list[Message]:
-        """Converts an action into a message format that can be sent to the LLM.
-
-        This method handles different types of actions and formats them appropriately:
-        1. For tool-based actions (AgentDelegate, CmdRun, IPythonRunCell, FileEdit) and agent-sourced AgentFinish:
-            - In function calling mode: Stores the LLM's response in pending_tool_call_action_messages
-            - In non-function calling mode: Creates a message with the action string
-        2. For MessageActions: Creates a message with the text content and optional image content
-
-        Args:
-            action: The action to convert. Can be one of:
-                - CmdRunAction: For executing bash commands
-                - IPythonRunCellAction: For running IPython code
-                - FileEditAction: For editing files
-                - FileReadAction: For reading files using openhands-aci commands
-                - BrowseInteractiveAction: For browsing the web
-                - AgentFinishAction: For ending the interaction
-                - MessageAction: For sending messages
-                - MCPAction: For interacting with the MCP server
-            pending_tool_call_action_messages: Dictionary mapping response IDs to their corresponding messages.
-                Used in function calling mode to track tool calls that are waiting for their results.
-
-            vision_is_active: Whether vision is active in the LLM. If True, image URLs will be included
-
-        Returns:
-            list[Message]: A list containing the formatted message(s) for the action.
-                May be empty if the action is handled as a tool call in function calling mode.
-
-        Note:
-            In function calling mode, tool-based actions are stored in pending_tool_call_action_messages
-            rather than being returned immediately. They will be processed later when all corresponding
-            tool call results are available.
         """
-        # create a regular message from an event
+        处理动作事件并将其转换为消息。
+
+        参数:
+            action: 要处理的动作
+            pending_tool_call_action_messages: 待处理的工具调用动作消息字典
+            vision_is_active: 是否启用视觉功能
+
+        返回:
+            从动作生成的消息列表
+        """
+        """
+        将动作转换为可以发送给 LLM 的消息格式。
+
+        此方法处理不同类型的动作并适当地格式化它们:
+        1. 对于基于工具的动作(AgentDelegate, CmdRun, IPythonRunCell, FileEdit)和代理源的 AgentFinish:
+            - 在函数调用模式下: 将 LLM 的响应存储在 pending_tool_call_action_messages 中
+            - 在非函数调用模式下: 创建带有动作字符串的消息
+        2. 对于 MessageActions: 创建带有文本内容和可选图像内容的消息
+
+        参数:
+            action: 要转换的动作。可以是以下之一:
+                - CmdRunAction: 用于执行 bash 命令
+                - IPythonRunCellAction: 用于运行 IPython 代码
+                - FileEditAction: 用于编辑文件
+                - FileReadAction: 用于使用 openhands-aci 命令读取文件
+                - BrowseInteractiveAction: 用于浏览网页
+                - AgentFinishAction: 用于结束交互
+                - MessageAction: 用于发送消息
+                - MCPAction: 用于与 MCP 服务器交互
+            pending_tool_call_action_messages: 响应 ID 到其对应消息的字典映射。
+                在函数调用模式下用于跟踪正在等待结果的工具调用。
+
+            vision_is_active: LLM 中是否激活了视觉功能。如果为 True，将包含图像 URL。
+
+        返回:
+            list[Message]: 包含动作的格式化消息列表。
+                如果动作在函数调用模式下作为工具调用处理，则可能为空。
+
+        注意:
+            在函数调用模式下，基于工具的动作存储在 pending_tool_call_action_messages 中，
+            而不是立即返回。它们将在所有相应的工具调用结果可用时稍后处理。
+        """
+        # 从事件创建常规消息
         if isinstance(
             action,
             (
-                AgentDelegateAction,
-                AgentThinkAction,
-                IPythonRunCellAction,
-                FileEditAction,
-                FileReadAction,
-                BrowseInteractiveAction,
-                BrowseURLAction,
-                MCPAction,
+                AgentDelegateAction,  # 代理委托动作
+                AgentThinkAction,  # 代理思考动作
+                IPythonRunCellAction,  # IPython 单元格运行动作
+                FileEditAction,  # 文件编辑动作
+                FileReadAction,  # 文件读取动作
+                BrowseInteractiveAction,  # 交互式浏览动作
+                BrowseURLAction,  # URL 浏览动作
+                MCPAction,  # MCP 动作
             ),
-        ) or (isinstance(action, CmdRunAction) and action.source == 'agent'):
+        ) or (
+            isinstance(action, CmdRunAction) and action.source == 'agent'
+        ):  # 代理源的命令运行动作
             tool_metadata = action.tool_call_metadata
             assert tool_metadata is not None, (
-                'Tool call metadata should NOT be None when function calling is enabled. Action: '
-                + str(action)
+                '当启用函数调用时，工具调用元数据不应为 None。动作: ' + str(action)
             )
 
             llm_response: ModelResponse = tool_metadata.model_response
