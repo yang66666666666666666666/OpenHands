@@ -1,3 +1,19 @@
+"""
+OpenHands 异步 LLM 模块
+
+本模块实现了异步的大型语言模型交互功能，包括：
+- 异步 LLM API 调用，提高并发性能
+- 异步重试机制和错误处理
+- 用户取消操作支持
+- 异步成本跟踪和指标收集
+- 并发请求管理
+
+技术栈:
+- Asyncio: 异步编程框架
+- LiteLLM: 异步 LLM API 调用
+- Functools: 偏函数和装饰器
+"""
+
 import asyncio
 from functools import partial
 from typing import Any, Callable

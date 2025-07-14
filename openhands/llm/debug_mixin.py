@@ -1,9 +1,27 @@
+"""
+OpenHands LLM 调试混入模块
+
+本模块提供了调试和日志功能，用于记录 LLM 交互过程。
+支持多模态内容的格式化和调试信息的结构化输出。
+
+主要功能：
+- 记录发送到 LLM 的提示内容
+- 记录从 LLM 接收的响应内容
+- 格式化多模态内容（文本和图像）
+- 提供结构化的调试信息输出
+- 支持视觉内容的调试显示
+
+技术栈:
+- Python 标准库: 类型注解和字符串处理
+- OpenHands 日志系统: 结构化日志记录
+"""
+
 from typing import Any
 
 from openhands.core.logger import llm_prompt_logger, llm_response_logger
 from openhands.core.logger import openhands_logger as logger
 
-MESSAGE_SEPARATOR = '\n\n----------\n\n'
+MESSAGE_SEPARATOR = '\n\n----------\n\n'  # 消息分隔符
 
 
 class DebugMixin:

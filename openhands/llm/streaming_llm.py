@@ -1,3 +1,19 @@
+"""
+OpenHands 流式 LLM 模块
+
+本模块实现了流式大型语言模型交互功能，包括：
+- 流式 LLM API 调用，实时返回生成内容
+- 流式重试机制和错误处理
+- 用户取消操作支持
+- 流式指标收集和成本跟踪
+- 增量响应处理，优化用户体验
+
+技术栈:
+- Asyncio: 异步编程和流式处理
+- LiteLLM: 流式 LLM API 调用
+- Functools: 偏函数和装饰器
+"""
+
 import asyncio
 from functools import partial
 from typing import Any, Callable
